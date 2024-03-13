@@ -136,12 +136,12 @@ func extractcheckPDF(url string) (string, error) {
 			return "", fmt.Errorf("error extracting page from pdf extractor.NEW")
 		}
 
-		text, _, _, err := ex.ExtractPageText()
+		text, err := ex.ExtractText()
 		if err != nil {
 			return "", fmt.Errorf("error extracting page from pdf extractText", err)
 		}
 
-		content.WriteString(text.Text())
+		content.WriteString(text)
 		content.WriteString("\n")
 	}
 
