@@ -25,13 +25,20 @@ type entry struct {
 }
 
 func main() {
-	// s, err := parseDataFrameToStructs(newDf("Medication Guides.csv"))
-	// if err != nil {
-	// 	fmt.Println("Error in main injection", err)
-	// }
-	text, _ := extractcheckPDF("https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/204311s000lbl.pdf#page=34")
-	fmt.Println(text)
-
+	texting, err := extractcheckPDF("https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/204311s000lbl.pdf#page=34")
+	if err != nil {
+		fmt.Println("error in main:", err)
+	}
+	file, err := os.Create("test1.txt")
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+	}
+	_, err = file.WriteString(texting)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return
+	}
+	defer file.Close()
 }
 
 func newDf(filename string) dataframe.DataFrame {
@@ -59,7 +66,7 @@ func parseDataFrameToStructs(df dataframe.DataFrame) ([]entry, error) {
 
 	// Iterate over each row in the DataFrame
 	for _, record := range records {
-		if len(record) != 3 {
+		if len(record) != 7 {
 			return nil, fmt.Errorf("unexpected number of columns in DataFrame record")
 		}
 
@@ -82,16 +89,17 @@ func parseDataFrameToStructs(df dataframe.DataFrame) ([]entry, error) {
 }
 func createMetaData(s []entry) error {
 	for _, e := range s {
-		file, err := os.Create("/metadata" + e.applNO + ".txt")
+		filePath := fmt.Sprintf("/metadata/%s.txt", e.applNO) // Specify the directory and filename properly
+		file, err := os.Create(filePath)
 		if err != nil {
-			fmt.Println("Error creating file:")
+			fmt.Printf("Error creating file %s: %v\n", filePath, err)
 			return err
 		}
 		defer file.Close()
 	}
 	return nil
-
 }
+
 func extractcheckPDF(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -115,32 +123,26 @@ func extractcheckPDF(url string) (string, error) {
 	}
 
 	var content strings.Builder
-	var isInSection bool
-
-	// Create a new text extractor instance.
-	extractor, err := extractor.New(pdfReader)
-	if err != nil {
-		return "", fmt.Errorf("error creating text extractor: %v", err)
-	}
 
 	for pageNum := 1; pageNum <= numPages; pageNum++ {
 		// Extract text from the current page.
-		pageText, _, _, err := extractor.ExtractPageText(pageNum)
+		page, err := pdfReader.GetPage(pageNum)
 		if err != nil {
-			return "", fmt.Errorf("error extracting text from page %d: %v", pageNum, err)
+			return "", fmt.Errorf("error extracting page from pdf")
 		}
 
-		// Check if the current page contains the section name.
-		if strings.Contains(pageText, "PATIENT COUNSELING INFORMATION") {
-			// Start recording content if the section is found.
-			isInSection = true
+		ex, err := extractor.New(page)
+		if err != nil {
+			return "", fmt.Errorf("error extracting page from pdf")
 		}
 
-		// If in the section, append the content of the current page.
-		if isInSection {
-			content.WriteString(pageText)
-			content.WriteString("\n")
+		text, err := ex.ExtractText()
+		if err != nil {
+			return "", fmt.Errorf("error extracting page from pdf")
 		}
+
+		content.WriteString(text)
+		content.WriteString("\n")
 	}
 
 	return content.String(), nil
