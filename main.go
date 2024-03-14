@@ -12,6 +12,7 @@ import (
 	"github.com/unidoc/unipdf/v3/model"
 
 	"github.com/go-gota/gota/dataframe"
+	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
 type entry struct {
@@ -100,7 +101,7 @@ func createMetaData(s []entry) error {
 	return nil
 }
 
-func extractcheckPDF(url string) (string, error) {
+func extractcheckuniPDF(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("error downloading PDF file: %v", err)
@@ -146,4 +147,44 @@ func extractcheckPDF(url string) (string, error) {
 	}
 
 	return content.String(), nil
+}
+func extractcheckEMDPDF(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("error downloading PDF file: %v", err)
+	}
+	defer resp.Body.Close()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading PDF contents: %v", err)
+	}
+	rs := bytes.NewReader(buf)
+
+	// Extract metadata from the PDF using pdfcpu
+	erk := api.ExtractMetadata(rs, "/Users/rajchodisetti/Desktop/medLLM", "checktxt.txt", nil)
+	if erk != nil {
+		return "", fmt.Errorf("error extracting metadata %v", erk)
+	}
+	return "Success", nil
+
+}
+func extractcheckPDF(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("error downloading PDF file: %v", err)
+	}
+	defer resp.Body.Close()
+
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading PDF contents: %v", err)
+	}
+	rs := bytes.NewReader(buf)
+	erk := api.ExtractContent(rs, "/Users/rajchodisetti/Desktop/medLLM", "checktxt.txt", nil, nil)
+	if erk != nil {
+		return "", fmt.Errorf("error extracting metadata %v", erk)
+	}
+	return "Success", nil
+
 }
