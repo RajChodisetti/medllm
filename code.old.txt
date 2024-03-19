@@ -1,0 +1,51 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/unidoc/unipdf/v3/extractor"
+	"github.com/unidoc/unipdf/v3/model"
+)
+
+func main() {
+	// open file
+	file, err := os.Open("place_holder.pdf")
+
+	if err != nil {
+		log.Fatalf("error opening file %v", err)
+	}
+
+	defer file.Close()
+
+	pdfReader, err := model.NewPdfReader(file)
+	if err != nil {
+		log.Fatalf("error reading file %v", err)
+	}
+
+	numOfPages, err := pdfReader.GetNumPages()
+	if err != nil {
+		log.Fatalf("error getting num of pages %v", err)
+	}
+
+	for i := 0; i < numOfPages; i++ {
+		pageNum := i + 1
+		page, err := pdfReader.GetPage(pageNum)
+		if err != nil {
+			log.Fatalf("error getting page %v", err)
+		}
+
+		textExtractor, err := extractor.New(page)
+		if err != nil {
+			log.Fatalf("error getting text extractor of the page %v", err)
+		}
+
+		text, err := textExtractor.ExtractText()
+		if err != nil {
+			log.Fatalf("error getting text %v", err)
+		}
+
+		fmt.Println("This is the text of the PDF page \n", text)
+	}
+}

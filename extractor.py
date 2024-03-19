@@ -1,28 +1,24 @@
-import requests
-import io
-from PyPDF2 import PdfReader
+import csv
 
-def extract_text_from_last_pages(pdf_url, output_path, num_pages=8):
-    response = requests.get(pdf_url)
-    pdf_file = io.BytesIO(response.content)
-
-    reader = PdfReader(pdf_file)
-    total_pages = len(reader.pages)
-    text = ''
+def get_seventh_column(csv_file):
+    with open(csv_file, 'r') as file:
+        reader = csv.reader(file)
+        # Skip header row if present
+        next(reader, None)
         
-    for i in range(total_pages - num_pages, total_pages):
-        page = reader.pages[i]
-        text += page.extract_text()
-    
-    # Remove empty lines
-    text_lines = filter(lambda x: x.strip(), text.split('\n'))
-    text = '\n'.join(text_lines)
+        # Iterate over the first 10 rows
+        rows = []
+        for _ in range(10):
+            try:
+                row = next(reader)
+                # Get the 7th column value and append to the list
+                rows.append(row[6])  # Indexing is 0-based, so 6 represents the 7th column
+            except StopIteration:
+                break
         
-    with open(output_path, 'w') as txt_file:
-        txt_file.write(text)
+        return rows
 
-# Replace 'your_pdf_url' and 'output.txt' with your URL and desired file paths
-pdf_url = "https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/204311s000lbl.pdf#page=34"
-output_path = 'metadata/output.txt'
-
-extract_text_from_last_pages(pdf_url, output_path)
+# Example usage:
+csv_file = 'top10.csv'  # Replace with the path to your CSV file
+seventh_column_values = get_seventh_column(csv_file)
+print(seventh_column_values)
