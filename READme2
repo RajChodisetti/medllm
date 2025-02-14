@@ -1,0 +1,203 @@
+1. Goal
+The objective of this document is to provide a detailed and structured workflow for automating AD Group and Service Account Onboarding using ARM API integration. The document covers:
+
+Automating the creation of AD groups and service accounts.
+Validations to prevent duplicate group creation.
+Approval workflows involving multiple approvers.
+Handling failures through manual intervention.
+Tracking progress using the Status API.
+Verification using GIS Toolkit or AD Reporting APIs.
+2. Background and Strategic Fit
+2.1 What is ARM?
+ARM (Access Request Management) is the bank’s system for managing AD group access requests.
+Historically, ARM did not have an API, and requests were manually processed using macro-based spreadsheets.
+A new ARM API is available, allowing automation of the AD group creation process.
+2.2 Why is this needed?
+Automates tedious manual processes.
+Reduces onboarding delays by streamlining approval workflows.
+Ensures consistency in AD group creation.
+Provides tracking mechanisms for request progress.
+3. Overview
+The workflow consists of:
+
+Tenant onboarding request initiation:
+
+Requestor submits an application onboarding request.
+Includes AD Groups that need to be created.
+Pre-validation checks:
+
+Checks if groups already exist before making an ARM request.
+If groups are missing, ARM requests are created dynamically.
+ARM Request Handling:
+
+ARM requests are sent to the external API (managed by ARM).
+Primary and secondary approvers are added in the request.
+Tracking Group Creation:
+
+Use Status API to track request progress.
+Auto-provisioning failures go to Mark Burke's team for manual intervention.
+User Addition (After 24-48 Hours):
+
+Once AD groups are successfully created, users are added to the groups.
+Service Account Handling:
+
+A different form is used for service account creation.
+Once the service account request is raised, Status API is used for tracking.
+Verification is performed using GIS Toolkit or AD Reporting APIs.
+4. API Operations
+Case	Method	API Endpoint	Purpose
+1	GET	/arm/request/{requestid}	Get the status of an ARM request (approval state, date, etc.)
+2	POST	/arm/request/group	Create a new AD group request
+3	POST	/arm/request/group/{group_name}/user	Add a user to an existing AD group
+4	DELETE	/arm/request/group/{group_name}	Delete an AD group
+5. Design Patterns
+Microservices-based API architecture for modular design.
+Event-driven processing for tracking status updates.
+Idempotent API calls to prevent duplicate group creation.
+Failure-handling mechanisms for automatic retries and manual fallback.
+6. Overall Architecture Diagram
+The system integrates:
+
+ARM API (external request processing).
+Tenant Onboarding Service (request initiation & validation).
+Approval Workflow (approvals from Associate Manager, AIT Manager, Primary & Secondary Owners).
+AD Group & Service Account Management.
+GIS Toolkit & AD Reporting for validation.
+(Diagram can be added here)
+
+7. Sequence Diagram
+Illustrates the step-by-step API interactions for AD group creation, approval, and tracking.
+
+(Diagram can be added here)
+
+8. Approval Workflow
+8.1 General Steps
+Request Submission
+
+The requestor submits an ARM request to create an AD group.
+Pre-validation Checks
+
+If the group already exists, the request is ignored.
+If the group does not exist, an ARM request is generated.
+Approval Process
+
+Step 1: Associate Manager approval.
+Step 2: Selected AIT Manager approval.
+Step 3: Primary Approver approval (final step).
+Step 4: If auto-provisioning fails, request is escalated to Mark Burke's team for manual processing.
+Group Creation & Auto-Provisioning
+
+If approvals are completed successfully, the group is automatically provisioned.
+9. Use Cases
+Use Case 1: Creating AD Groups Dynamically
+If an application requires AD groups, but they do not exist, an ARM request is auto-generated.
+ARM Request Payload:
+
+json
+Copy
+Edit
+{
+    "RequestUniqueId": "9ae87a...",
+    "ExternalRequestorSystem": "Landlord",
+    "RequestType": "NEW",
+    "RequestorNBK": "ZK71QKG",
+    "TicketOnBehalfOf": "On Behalf of Bank Employee",
+    "AssociateAndManagerList": [
+        {
+            "AssociateNBK": "ZKNV4G6",
+            "ManagerNBK": "ZKLKRX8"
+        }
+    ],
+    "ARMApplicationCollection": [
+        {
+            "ApplicationKey": "7684D90F-...",
+            "ARMTicketAttributeCollection": [
+                {
+                    "ARMAttributeType": "AppAttribute",
+                    "ARMAttributeKey": "BULK_ACTION",
+                    "ARMAttributeValue": "Single Group Request"
+                }
+            ]
+        }
+    ]
+}
+Response:
+
+json
+Copy
+Edit
+{
+    "RequestUniqueId": "9ae87a...",
+    "SubmitStatus": "Success",
+    "GroupTicketNo": "48743905"
+}
+Use Case 2: Tracking AD Group Creation via Status API
+We use the Status API to check if the request is complete.
+API Call:
+
+bash
+Copy
+Edit
+curl --request GET \
+  --url https://iga-atlas.bankofamerica.com/atlas/api/processes/<workOrderID> \
+  --header 'Authorization: Bearer ********'
+Response:
+
+json
+Copy
+Edit
+{
+    "ticket_number": "53261908",
+    "group_ticket_number": "48743905",
+    "request_type": "NEW",
+    "status": "Manager Approval(S)",
+    "created_time": "11/27/2024 8:19:49 AM"
+}
+Use Case 3: Adding Users to AD Groups
+After 24-48 hours, we add users to the newly created groups.
+API Call:
+
+bash
+Copy
+Edit
+curl --request POST \
+  --url https://iga-atlas.bankofamerica.com/atlas/api/workOrders/adServiceAccount/modify \
+  --header 'Authorization: Bearer ********' \
+  --header 'accept: application/json' \
+  --header 'content-type: application/json' \
+  --data '{
+      "justification": "Modify work order testing",
+      "type": "AD_SERVICE_ID_ADD_GROUPS",
+      "serviceAccount": {
+          "serviceId": "ZSM9XU5",
+          "domain": "CORP",
+          "groups": [
+              {
+                  "groupName": "achp_70449_developer_AP",
+                  "domain": "CORP"
+              }
+          ]
+      }
+  }'
+10. Validation Rules
+Validation	Description
+Primary & Secondary Approver	Must be different persons
+Group Name Validation	Auto-appends _AP to group names
+Existing Groups	API will check if the group already exists before creating it
+Bulk Requests	Not supported in a single API call
+11. Testing & QA
+Tested API with valid AIT numbers → Passed.
+Tested with invalid group names → API rejected.
+Checked auto-provisioning & manual fallback → Works as expected.
+12. FAQs
+1. What happens if auto-provisioning fails?
+It is sent to Mark Burke's team for manual approval.
+
+2. Can we create multiple groups in one request?
+No, each group requires a separate ARM request.
+
+3. How do we verify group creation?
+Use GIS Toolkit or AD Reporting APIs.
+
+13. Conclusion
+This document outlines the complete ARM onboarding process, covering AD group creation, tracking, service account handling, and verification mechanisms for a streamlined automation workflow.
