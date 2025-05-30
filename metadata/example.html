@@ -22,15 +22,24 @@
       border-radius: 6px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
-    .header {
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid #ddd;
       padding-bottom: 10px;
     }
-    .header h2 {
-      margin: 0;
-      font-size: 15px;
+    .top-bar .left {
+      font-size: 18px;
+      font-weight: 700;
       color: #1a4b7c;
+    }
+    .top-bar .right {
+      font-size: 13px;
       font-weight: 500;
+      color: #1a4b7c;
+      text-align: right;
+      max-width: 55%;
     }
     .title {
       font-size: 20px;
@@ -69,12 +78,24 @@
       border-top: 1px solid #ddd;
       padding-top: 10px;
     }
+    @media (max-width: 600px) {
+      .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .top-bar .right {
+        max-width: 100%;
+        text-align: left;
+        margin-top: 5px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h2>Core Technology Infrastructure – Enterprise Cloud Hosting & Data Center Services</h2>
+    <div class="top-bar">
+      <div class="left">Bank of America</div>
+      <div class="right">Core Technology Infrastructure – Enterprise Cloud Hosting & Data Center Services</div>
     </div>
 
     <div class="title">Landlord Orchestration Tool</div>
